@@ -10,12 +10,10 @@ import requests
 # Local Application Imports
 from utils import Logger, PostgresConnection
 
-# Accessing environment variables for DB connection and API key info
+# Accessing environment variables for API key info.
+# DB connection is resolved by PostgresConnection.from_env() (DATABASE_URL or
+# ANALYTICS_DATABASE_URL) — see jobs/utils/postgres_connection.py.
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
-DB_HOST = os.getenv("DB_HOST")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_NAME")
 
 def fetch_wind_data(latitude, longitude, logger):
     """Fetch current wind data from OpenWeather API and extract only numeric values.
@@ -56,7 +54,7 @@ def get_spot_info(logger):
     Returns:
         list: A list of tuples representing spot information (id, latitude, longitude).
     """
-    with PostgresConnection(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, logger) as db_connection:
+    with PostgresConnection.from_env(logger=logger, analytics=True) as db_connection:
         spots = db_connection.select("reference.spot_info", "id, latitude, longitude")
     
     if not spots:
@@ -82,7 +80,7 @@ def insert_wind_data(spot_id, wind_data, logger):
         "wind_gust": wind_data['wind_gust']
     }
 
-    with PostgresConnection(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, logger) as db_connection:
+    with PostgresConnection.from_env(logger=logger, analytics=True) as db_connection:
         if db_connection.insert("ingested.wind_data", data):
             logger.log_json("INFO", "Wind data inserted successfully", {"spot_id": spot_id})
         else:
